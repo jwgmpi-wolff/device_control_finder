@@ -1,0 +1,6 @@
+**/google-services.json
+**/.env
+**/bin/
+**/obj/
+**/build/
+**/.gradle/

@@ -1,5 +1,6 @@
 import express from "express";
 import bcrypt from "bcryptjs";
+import { OAuth2Client } from "google-auth-library";
 import { randomUUID } from "node:crypto";
 import { authenticate, issueToken, requireRole } from "./auth.js";
 import { config } from "./config.js";
@@ -8,6 +9,7 @@ import { sendSessionRequest } from "./push.js";
 import { publishSessionEnded } from "./session-events.js";
 
 const app = express();
+const googleClient = new OAuth2Client();
 app.use(express.json({ limit: "32kb" }));
 app.use((req, res, next) => {
   res.set("Cache-Control", "no-store");
@@ -56,6 +58,51 @@ app.post("/auth/login", asyncRoute(async (req, res) => {
   }
   await writeAudit({ actorId: id, action: "auth.login" });
   return res.json({ token: issueToken({ sub: id, role: "controller" }), userId: id });
+}));
+
+app.post("/auth/google", asyncRoute(async (req, res) => {
+  const idToken = String(req.body.idToken ?? "");
+  if (!idToken || idToken.length > 8192) {
+    return res.status(400).json({ error: "Google ID token required" });
+  }
+  if (config.googleClientIds.length === 0) {
+    return res.status(503).json({ error: "Google sign-in is not configured on this server" });
+  }
+
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: config.googleClientIds
+    });
+    payload = ticket.getPayload();
+  } catch {
+    await writeAudit({ actorId: "anonymous", action: "auth.google_failed" });
+    return res.status(401).json({ error: "Invalid Google ID token" });
+  }
+
+  const email = payload?.email?.trim().toLowerCase();
+  if (!payload?.sub || !email || payload.email_verified !== true) {
+    await writeAudit({ actorId: "anonymous", action: "auth.google_unverified_email" });
+    return res.status(401).json({ error: "Google account must have a verified email" });
+  }
+
+  let userId = await redis.get(keys.email(email));
+  let user = userId ? JSON.parse(await redis.get(keys.user(userId))) : null;
+  if (user?.googleSub && user.googleSub !== payload.sub) {
+    await writeAudit({ actorId: "anonymous", action: "auth.google_account_mismatch" });
+    return res.status(409).json({ error: "Email is already linked to a different Google account" });
+  }
+  if (!user) {
+    userId = randomUUID();
+    user = { id: userId, email, googleSub: payload.sub };
+  } else {
+    user.googleSub = payload.sub;
+  }
+  await redis.set(keys.user(userId), JSON.stringify(user));
+  await redis.set(keys.email(email), userId);
+  await writeAudit({ actorId: userId, action: "auth.google_login" });
+  return res.json({ token: issueToken({ sub: userId, role: "controller" }), userId });
 }));
 
 app.post("/devices", authenticate, requireRole("controller"), asyncRoute(async (req, res) => {

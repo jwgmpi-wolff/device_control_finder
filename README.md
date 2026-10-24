@@ -80,6 +80,27 @@ Firebase Admin service-account JSON in the server's `.env` as a single-line
 Firebase credentials, FCM delivery is unavailable; configure them before relying
 on remote request notifications.
 
+### Configure Google sign-in
+
+1. In Google Cloud Console, configure the OAuth consent screen and create a **Web
+   application** OAuth client. Add its client ID as the repository Actions
+   variable `GOOGLE_WEB_CLIENT_ID`.
+2. Create an **Android** OAuth client for package
+   `com.example.remotecontroller` and its signing certificate SHA-1. Get the local
+   debug SHA-1 with `gradle -p RemoteController :app:signingReport`. Rebuild the
+   APK after setting the Web client variable.
+3. Add the Web client ID to the comma-separated `GOOGLE_CLIENT_IDS` value in the
+   deployed `.env`, then rebuild/restart RemoteHub.
+4. For the Windows requestor, create a separate **Desktop app** OAuth client.
+   Add both the Web and Desktop client IDs to `GOOGLE_CLIENT_IDS`, and save the
+   downloaded desktop client JSON at
+   `%LOCALAPPDATA%\RemoteControllerDesktop\google-oauth-client.json`.
+
+The backend verifies the Google ID token signature, audience, and verified email
+before issuing its own RemoteHub JWT. Account password login remains available as
+an alternative. Do not add OAuth client-secret JSON files or Firebase credentials
+to Git.
+
 The Android and Windows clients implement real backend account creation/sign-in,
 device registration, request creation, and device listing. The agent can submit
 owner decisions and revoke sessions. Signaling transport is provided, but this

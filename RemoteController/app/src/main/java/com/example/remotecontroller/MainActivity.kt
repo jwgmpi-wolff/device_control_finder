@@ -3,6 +3,11 @@ package com.example.remotecontroller
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.lifecycleScope
 import com.example.remotecontroller.data.ControllerRepository
 import com.example.remotecontroller.data.TokenStore
 
@@ -66,6 +72,43 @@ class MainActivity : ComponentActivity() {
                                     TokenStore.setBaseUrl(this@MainActivity, url)
                                 }
                             }) { Text("Create account") }
+                            Button(enabled = !state.busy, onClick = {
+                                if (BuildConfig.GOOGLE_WEB_CLIENT_ID.isBlank()) {
+                                    android.widget.Toast.makeText(
+                                        this@MainActivity,
+                                        "Google sign-in is not configured in this APK.",
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                    return@Button
+                                }
+                                lifecycleScope.launch {
+                                    try {
+                                        val option = GetGoogleIdOption.Builder()
+                                            .setFilterByAuthorizedAccounts(false)
+                                            .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+                                            .setAutoSelectEnabled(false)
+                                            .build()
+                                        val request = GetCredentialRequest.Builder()
+                                            .addCredentialOption(option).build()
+                                        val result = CredentialManager.create(this@MainActivity)
+                                            .getCredential(this@MainActivity, request)
+                                        if (result.credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                                            return@launch
+                                        }
+                                        val idToken = GoogleIdTokenCredential.createFrom(result.credential.data).idToken
+                                        model.googleLogin(idToken, baseUrl) { token, url ->
+                                            TokenStore.set(this@MainActivity, token)
+                                            TokenStore.setBaseUrl(this@MainActivity, url)
+                                        }
+                                    } catch (error: GetCredentialException) {
+                                        android.widget.Toast.makeText(
+                                            this@MainActivity,
+                                            "Google sign-in failed: ${error.message}",
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                            }) { Text("Continue with Google") }
                             state.message?.let { Text(it) }
                         }
                     } else {

@@ -31,9 +31,11 @@ jobs:
           echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode \
             > RemoteAgent/app/google-services.json
       - name: Build target and requestor APKs
+        env:
+          GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
         run: |
           gradle --no-daemon -p RemoteAgent :app:assembleDebug
-          gradle --no-daemon -p RemoteController :app:assembleDebug
+          gradle --no-daemon -p RemoteController -PGOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID" :app:assembleDebug
       - name: Stage separately named APKs
         shell: bash
         run: |

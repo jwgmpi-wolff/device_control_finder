@@ -11,6 +11,7 @@ import retrofit2.http.Path
 import java.net.URI
 
 data class LoginRequest(val email: String, val password: String)
+data class GoogleLoginRequest(val idToken: String)
 data class LoginResponse(val token: String, val userId: String)
 data class Device(val id: String, val name: String, val createdAt: String)
 data class DevicesResponse(val devices: List<Device>)
@@ -22,6 +23,7 @@ data class RegisterDeviceResponse(val device: Device, val agentToken: String)
 
 interface ControllerApi {
     @POST("auth/login") suspend fun login(@Body body: LoginRequest): LoginResponse
+    @POST("auth/google") suspend fun googleLogin(@Body body: GoogleLoginRequest): LoginResponse
     @POST("auth/register") suspend fun register(@Body body: LoginRequest): LoginResponse
     @GET("devices") suspend fun devices(): DevicesResponse
     @POST("devices") suspend fun registerDevice(@Body body: RegisterDeviceRequest): RegisterDeviceResponse
@@ -33,6 +35,7 @@ interface ControllerApi {
 
 class ControllerRepository(private val api: ControllerApi) {
     suspend fun login(email: String, password: String) = api.login(LoginRequest(email, password))
+    suspend fun googleLogin(idToken: String) = api.googleLogin(GoogleLoginRequest(idToken))
     suspend fun register(email: String, password: String) = api.register(LoginRequest(email, password))
     suspend fun devices() = api.devices().devices
     suspend fun registerDevice(name: String) = api.registerDevice(RegisterDeviceRequest(name))

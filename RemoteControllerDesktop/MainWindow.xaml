@@ -21,6 +21,8 @@
             <PasswordBox x:Name="PasswordBox" Width="150" Margin="0,0,8,0" VerticalContentAlignment="Center"/>
             <Button Content="Sign in" Padding="14,7" Margin="0,0,8,0" Click="SignIn_Click"/>
             <Button Content="Create account" Padding="14,7" Click="Register_Click"/>
+            <Button Content="Continue with Google" Padding="14,7" Margin="8,0,0,0"
+                    Click="GoogleSignIn_Click"/>
         </WrapPanel>
         <ScrollViewer Grid.Row="2">
             <StackPanel>

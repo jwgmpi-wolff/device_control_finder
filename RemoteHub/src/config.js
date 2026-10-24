@@ -19,5 +19,6 @@ export const config = {
   jwtAudience: process.env.JWT_AUDIENCE,
   jwtTtl: process.env.JWT_TTL ?? "1h",
   allowedOrigin: process.env.ALLOWED_ORIGIN,
-  firebaseServiceAccountJson: process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+  firebaseServiceAccountJson: process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
+  googleClientIds: (process.env.GOOGLE_CLIENT_IDS ?? "").split(",").map((id) => id.trim()).filter(Boolean)
 };

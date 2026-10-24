@@ -23,6 +23,40 @@ public partial class MainWindow : Window
     private async void Register_Click(object sender, RoutedEventArgs e)
         => await AuthenticateAsync(register: true);
 
+    private async void GoogleSignIn_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (!Uri.TryCreate(ServerUrlBox.Text.Trim(), UriKind.Absolute, out var serverUri)
+                || serverUri.Scheme != Uri.UriSchemeHttps)
+            {
+                StatusText.Text = "Enter the deployed RemoteHub HTTPS URL first.";
+                return;
+            }
+            _client?.Dispose();
+            _client = new HttpClient { BaseAddress = new Uri(serverUri.AbsoluteUri.TrimEnd('/') + "/") };
+            _auth = new AuthService(_client);
+            _commands = new CommandService(_client);
+            StatusText.Text = "Opening Google sign-in...";
+            var result = await _auth.GoogleLoginAsync();
+            _token = result.Token;
+            await LoadDevicesAsync();
+            StatusText.Text = "Signed in with Google.";
+        }
+        catch (HttpRequestException ex)
+        {
+            StatusText.Text = $"Google sign-in failed: {ex.Message}";
+        }
+        catch (InvalidOperationException ex)
+        {
+            StatusText.Text = $"Google sign-in failed: {ex.Message}";
+        }
+        catch (FileNotFoundException ex)
+        {
+            StatusText.Text = $"{ex.Message} Download a Google Desktop OAuth client and save it at that path.";
+        }
+    }
+
     private async Task AuthenticateAsync(bool register)
     {
         try

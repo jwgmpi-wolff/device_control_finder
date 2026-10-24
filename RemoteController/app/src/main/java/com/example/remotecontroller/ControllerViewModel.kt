@@ -47,6 +47,21 @@ class ControllerViewModel(
                     _serverUrl = baseUrl
                     loadDevices()
                 }
+
+    fun googleLogin(idToken: String, baseUrl: String, onToken: (String, String) -> Unit) =
+                viewModelScope.launch {
+                    _state.value = _state.value.copy(busy = true, message = null)
+                    runCatching { repositoryForUrl(baseUrl).googleLogin(idToken) }
+                        .onSuccess {
+                            onToken(it.token, baseUrl)
+                            _state.value = _state.value.copy(
+                                busy = false, token = it.token, message = "Signed in with Google."
+                            )
+                            _serverUrl = baseUrl
+                            loadDevices()
+                        }
+                        .onFailure { _state.value = _state.value.copy(busy = false, message = "Google sign-in failed: ${it.message}") }
+                }
                 .onFailure { _state.value = _state.value.copy(busy = false, message = "Registration failed: ${it.message}") }
         }
 

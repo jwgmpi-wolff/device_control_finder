@@ -22,6 +22,11 @@ android {
         buildConfigField("String", "API_BASE_URL", "\"https://remotehub.example/\"")
         buildConfigField("String", "WS_BASE_URL", "\"wss://remotehub.example/signal\"")
     }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = true }
 }
 

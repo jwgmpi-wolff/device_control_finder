@@ -66,7 +66,7 @@ jobs:
         shell: pwsh
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          & $iscc "/DAppVersion=${{ github.ref_name }}" "/DPublishDir=$((Resolve-Path publish/RemoteControllerDesktop).Path)" "/DOutputDir=$((Resolve-Path .).Path)\downloads" RemoteControllerDesktop\installer.iss
+          & $iscc "/DAppVersion=${{ github.ref_name }}" "/DPublishDir=$((Resolve-Path publish/RemoteControllerDesktop).Path)" "/DOutputDir=$((Resolve-Path .).Path)" RemoteControllerDesktop\installer.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:

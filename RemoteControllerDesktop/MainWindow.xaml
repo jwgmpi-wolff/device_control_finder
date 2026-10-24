@@ -5,23 +5,36 @@
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,18">
-            <TextBlock Text="RemoteController" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center"/>
-            <TextBox x:Name="EmailBox" Width="190" Margin="24,0,8,0" VerticalContentAlignment="Center"
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="RemoteController" FontSize="24" FontWeight="SemiBold"/>
+            <TextBlock Text="RemoteHub server (HTTPS)" Margin="0,8,0,4"/>
+            <TextBox x:Name="ServerUrlBox" Height="30"
+                     VerticalContentAlignment="Center"/>
+        </StackPanel>
+        <WrapPanel Grid.Row="1" Margin="0,0,0,18">
+            <TextBox x:Name="EmailBox" Width="190" Margin="0,0,8,0" VerticalContentAlignment="Center"
                      ToolTip="Account email"/>
             <PasswordBox x:Name="PasswordBox" Width="150" Margin="0,0,8,0" VerticalContentAlignment="Center"/>
-            <Button Content="Sign in" Padding="14,7" Click="SignIn_Click"/>
-        </StackPanel>
-        <ScrollViewer Grid.Row="1">
+            <Button Content="Sign in" Padding="14,7" Margin="0,0,8,0" Click="SignIn_Click"/>
+            <Button Content="Create account" Padding="14,7" Click="Register_Click"/>
+        </WrapPanel>
+        <ScrollViewer Grid.Row="2">
             <StackPanel>
                 <TextBlock Text="Actions send requests only. The device owner must approve each session."
                            TextWrapping="Wrap" Margin="0,0,0,12"/>
+                <WrapPanel Margin="0,0,0,12">
+                    <TextBox x:Name="DeviceNameBox" Width="240" Margin="0,0,8,0"
+                             VerticalContentAlignment="Center" ToolTip="New target device name"/>
+                    <Button Content="Register target / get pairing token" Padding="10,6"
+                            Click="RegisterDevice_Click"/>
+                </WrapPanel>
                 <WrapPanel x:Name="DevicePanel"/>
             </StackPanel>
         </ScrollViewer>
-        <TextBlock x:Name="StatusText" Grid.Row="2" Margin="0,14,0,0" TextWrapping="Wrap"/>
+        <TextBlock x:Name="StatusText" Grid.Row="3" Margin="0,14,0,0" TextWrapping="Wrap"/>
     </Grid>
 </Window>

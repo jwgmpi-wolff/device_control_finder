@@ -9,6 +9,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Path
 import okhttp3.OkHttpClient
 import okhttp3.Interceptor
+import java.net.URI
 
 data class DecisionRequest(val decision: String)
 data class DecisionResponse(val sessionId: String, val status: String)
@@ -44,12 +45,17 @@ class AgentRepository(private val api: AgentApi) {
 
     companion object {
         fun create(baseUrl: String, token: String): AgentRepository {
+            val parsed = URI(baseUrl.trim())
+            require(parsed.scheme == "https" && parsed.host != null) {
+                "RemoteHub URL must be a valid HTTPS URL."
+            }
+            val normalizedBaseUrl = baseUrl.trim().trimEnd('/') + "/"
             val auth = Interceptor { chain ->
                 chain.proceed(chain.request().newBuilder()
                     .header("Authorization", "Bearer $token").build())
             }
             val client = OkHttpClient.Builder().addInterceptor(auth).build()
-            val api = Retrofit.Builder().baseUrl(baseUrl).client(client)
+            val api = Retrofit.Builder().baseUrl(normalizedBaseUrl).client(client)
                 .addConverterFactory(GsonConverterFactory.create()).build()
                 .create(AgentApi::class.java)
             return AgentRepository(api)

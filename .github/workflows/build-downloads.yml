@@ -74,10 +74,25 @@ jobs:
           path: downloads/*.exe
           if-no-files-found: error
 
+  backend:
+    name: Test RemoteHub
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install backend dependencies
+        working-directory: RemoteHub
+        run: npm install --omit=dev --no-audit --no-fund
+      - name: Run backend consent and authorization tests
+        working-directory: RemoteHub
+        run: npm test
+
   release:
     name: Attach downloads to GitHub release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [android, windows]
+    needs: [android, windows, backend]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

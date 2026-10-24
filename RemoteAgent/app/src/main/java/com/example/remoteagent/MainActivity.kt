@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.lifecycleScope
 import com.example.remoteagent.data.AgentRepository
 import com.example.remoteagent.data.AgentTokenStore
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -32,6 +33,7 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 Surface {
                     var token by remember { mutableStateOf(AgentTokenStore.get(this).orEmpty()) }
+                    var baseUrl by remember { mutableStateOf(AgentTokenStore.getBaseUrl(this)) }
                     var enabled by remember { mutableStateOf(false) }
                     var firstRunAccepted by remember {
                         mutableStateOf(getSharedPreferences("agent-settings", MODE_PRIVATE)
@@ -39,8 +41,9 @@ class MainActivity : ComponentActivity() {
                     }
                     var status by remember { mutableStateOf("Remote session requests are disabled.") }
                     var policyChecked by remember { mutableStateOf(false) }
-                    val repository = remember(token) {
-                        token.takeIf(String::isNotBlank)?.let { AgentRepository.create(BuildConfig.API_BASE_URL, it) }
+                    val repository = remember(token, baseUrl) {
+                        if (token.isBlank() || baseUrl.isBlank()) null
+                        else runCatching { AgentRepository.create(baseUrl, token) }.getOrNull()
                     }
                     LaunchedEffect(repository) {
                         if (repository != null) {
@@ -74,20 +77,42 @@ class MainActivity : ComponentActivity() {
                         } else {
                             Text("Every camera, microphone, or location request requires your approval.")
                             Text("No sensor starts from a push notification. You can decline every request.")
-                        TextField(
-                            value = token,
-                            onValueChange = { token = it },
-                            label = { Text("Paired agent token") }
-                        )
+                        TextField(value = baseUrl, onValueChange = { baseUrl = it },
+                            label = { Text("RemoteHub HTTPS URL") })
+                        TextField(value = token, onValueChange = { token = it },
+                            label = { Text("Paired agent token") })
                         Button(onClick = {
+                            val checkedRepository = runCatching { AgentRepository.create(baseUrl, token) }
+                                .getOrElse {
+                                    status = "Enter a valid HTTPS server URL and agent token."
+                                    return@Button
+                                }
+                            AgentTokenStore.setBaseUrl(this@MainActivity, baseUrl)
                             AgentTokenStore.set(this@MainActivity, token)
-                            status = "Agent token saved securely on this device."
+                            status = "Pairing saved. Connecting to RemoteHub..."
                             val fcmToken = AgentTokenStore.getFcmToken(this@MainActivity)
-                            if (fcmToken != null) lifecycleScope.launch {
-                                runCatching { repository?.updateFcmToken(fcmToken) }
-                                    .onFailure { status = "Token saved, but push registration failed: ${it.message}" }
+                            lifecycleScope.launch {
+                                runCatching {
+                                    checkedRepository.access()
+                                    fcmToken?.let { checkedRepository.updateFcmToken(it) }
+                                }.onSuccess { status = "Connected. Pairing saved securely." }
+                                    .onFailure { status = "Could not connect/register push token: ${it.message}" }
                             }
-                        }) { Text("Save pairing token") }
+                            val tokenTask = runCatching { FirebaseMessaging.getInstance().token }
+                                .getOrElse {
+                                    status = "Connected. FCM is unavailable until Firebase is configured for this build."
+                                    null
+                                }
+                            tokenTask?.addOnSuccessListener { refreshedToken ->
+                                    AgentTokenStore.setFcmToken(this@MainActivity, refreshedToken)
+                                    lifecycleScope.launch {
+                                        runCatching { checkedRepository.updateFcmToken(refreshedToken) }
+                                            .onFailure { status = "Connected, but push registration failed: ${it.message}" }
+                                    }
+                                }?.addOnFailureListener {
+                                    status = "Connected. FCM is unavailable until Firebase is configured for this build."
+                                }
+                        }) { Text("Connect and save pairing") }
                         Text("Accepting requests")
                         Switch(checked = enabled, enabled = repository != null, onCheckedChange = { checked ->
                             lifecycleScope.launch {

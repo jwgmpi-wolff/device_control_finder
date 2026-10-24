@@ -25,6 +25,10 @@ const allowedCapabilities = new Set(["CAMERA", "MICROPHONE", "LOCATION_ONCE"]);
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
+app.get("/ready", asyncRoute(async (_req, res) => {
+  await redis.ping();
+  return res.json({ ready: true });
+}));
 
 app.post("/auth/register", asyncRoute(async (req, res) => {
   const email = String(req.body.email ?? "").trim().toLowerCase();

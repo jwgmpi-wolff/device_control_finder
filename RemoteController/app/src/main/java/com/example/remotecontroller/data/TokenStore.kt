@@ -16,4 +16,8 @@ object TokenStore {
     fun set(context: Context, token: String) {
         preferences(context).edit().putString("token", token).apply()
     }
+    fun getBaseUrl(context: Context) = preferences(context).getString("base_url", "").orEmpty()
+    fun setBaseUrl(context: Context, baseUrl: String) {
+        preferences(context).edit().putString("base_url", baseUrl.trim().trimEnd('/')).apply()
+    }
 }

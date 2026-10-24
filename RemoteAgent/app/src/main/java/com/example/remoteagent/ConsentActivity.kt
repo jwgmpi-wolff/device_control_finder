@@ -26,7 +26,9 @@ class ConsentActivity : ComponentActivity() {
         val sessionId = intent.getStringExtra("sessionId").orEmpty()
         val capability = intent.getStringExtra("capability").orEmpty()
         val token = AgentTokenStore.get(this)
-        val repository = token?.let { AgentRepository.create(BuildConfig.API_BASE_URL, it) }
+        val baseUrl = AgentTokenStore.getBaseUrl(this)
+        val repository = if (token.isNullOrBlank() || baseUrl.isBlank()) null
+            else runCatching { AgentRepository.create(baseUrl, token) }.getOrNull()
         setContent {
             MaterialTheme {
                 if (repository == null) {

@@ -28,16 +28,19 @@ class MainActivity : ComponentActivity() {
     @Suppress("UNCHECKED_CAST")
     private fun makeViewModel() = ViewModelProvider(this, object : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            val anonymous = ControllerRepository.create(BuildConfig.API_BASE_URL)
-            val factory: (String) -> ControllerRepository = { ControllerRepository.create(BuildConfig.API_BASE_URL, it) }
-            return ControllerViewModel(anonymous, factory) as T
+            val anonymousFactory: (String) -> ControllerRepository = { ControllerRepository.create(it) }
+            val factory: (String, String) -> ControllerRepository = { url, token ->
+                ControllerRepository.create(url, token)
+            }
+            return ControllerViewModel(anonymousFactory, factory) as T
         }
     })[ControllerViewModel::class.java]
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val model = makeViewModel()
-        TokenStore.get(this)?.let(model::restoreToken)
+        val savedUrl = TokenStore.getBaseUrl(this)
+        if (savedUrl.isNotBlank()) TokenStore.get(this)?.let { model.restoreToken(it, savedUrl) }
         setContent {
             MaterialTheme {
                 val state by model.state.collectAsState()
@@ -45,18 +48,40 @@ class MainActivity : ComponentActivity() {
                     if (state.token == null) {
                         var email by remember { mutableStateOf("") }
                         var password by remember { mutableStateOf("") }
+                        var baseUrl by remember { mutableStateOf(savedUrl) }
                         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text("RemoteController", style = MaterialTheme.typography.headlineMedium)
+                            OutlinedTextField(baseUrl, { baseUrl = it }, label = { Text("RemoteHub HTTPS URL") })
                             OutlinedTextField(email, { email = it }, label = { Text("Email") })
                             OutlinedTextField(password, { password = it }, label = { Text("Password") })
                             Button(enabled = !state.busy, onClick = {
-                                model.login(email, password) { TokenStore.set(this@MainActivity, it) }
+                                model.login(email, password, baseUrl) { token, url ->
+                                    TokenStore.set(this@MainActivity, token)
+                                    TokenStore.setBaseUrl(this@MainActivity, url)
+                                }
                             }) { Text("Sign in") }
+                            Button(enabled = !state.busy, onClick = {
+                                model.register(email, password, baseUrl) { token, url ->
+                                    TokenStore.set(this@MainActivity, token)
+                                    TokenStore.setBaseUrl(this@MainActivity, url)
+                                }
+                            }) { Text("Create account") }
+                            state.message?.let { Text(it) }
                         }
                     } else {
                         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text("Devices", style = MaterialTheme.typography.headlineMedium)
                             Text("Actions send requests only; the device owner must approve each session.")
+                            var deviceName by remember { mutableStateOf("") }
+                            OutlinedTextField(deviceName, { deviceName = it }, label = { Text("New target device name") })
+                            Button(enabled = !state.busy && deviceName.isNotBlank(),
+                                onClick = { model.registerDevice(deviceName.trim()); deviceName = "" }) {
+                                Text("Register and pair a target")
+                            }
+                            state.agentToken?.let {
+                                Text("Copy this pairing token to the target device now:")
+                                Text(it, style = MaterialTheme.typography.bodySmall)
+                            }
                             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 items(state.devices) { device ->
                                     Column {

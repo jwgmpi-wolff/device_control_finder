@@ -8,9 +8,25 @@ public sealed record Device(string Id, string Name, string CreatedAt);
 public sealed record DevicesResponse(IReadOnlyList<Device> Devices);
 public sealed record RequestBody(string Capability);
 public sealed record RequestResponse(string SessionId, string Status);
+public sealed record RegisterDeviceRequest(string Name);
+public sealed record RegisterDeviceResponse(Device Device, string AgentToken);
 
 public sealed class CommandService(HttpClient client)
 {
+    public async Task<RegisterDeviceResponse> RegisterDeviceAsync(
+        string token, string name, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "devices")
+        {
+            Content = JsonContent.Create(new RegisterDeviceRequest(name))
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        using var response = await client.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<RegisterDeviceResponse>(cancellationToken)
+            ?? throw new InvalidOperationException("Server returned an empty device registration response.");
+    }
+
     public async Task<IReadOnlyList<Device>> GetDevicesAsync(string token, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "devices");

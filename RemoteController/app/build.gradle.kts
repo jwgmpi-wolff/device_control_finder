@@ -13,8 +13,6 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-        buildConfigField("String", "API_BASE_URL", "\"https://remotehub.example/\"")
-        buildConfigField("String", "WS_BASE_URL", "\"wss://remotehub.example/signal\"")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

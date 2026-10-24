@@ -7,6 +7,9 @@ for (const key of required) {
 if (process.env.JWT_SECRET.length < 32) {
   throw new Error("JWT_SECRET must contain at least 32 characters");
 }
+if (process.env.JWT_SECRET.toLowerCase().includes("replace-with")) {
+  throw new Error("JWT_SECRET still contains the example placeholder; generate a unique secret");
+}
 
 export const config = {
   port: Number(process.env.PORT ?? 8080),

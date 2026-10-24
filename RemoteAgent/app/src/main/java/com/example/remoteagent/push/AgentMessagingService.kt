@@ -7,7 +7,6 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.remoteagent.ConsentActivity
-import com.example.remoteagent.BuildConfig
 import com.example.remoteagent.data.AgentRepository
 import com.example.remoteagent.data.AgentTokenStore
 import com.example.remoteagent.R
@@ -22,9 +21,11 @@ class AgentMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         AgentTokenStore.setFcmToken(this, token)
         val agentToken = AgentTokenStore.get(this) ?: return
+        val baseUrl = AgentTokenStore.getBaseUrl(this)
+        if (baseUrl.isBlank()) return
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
-                AgentRepository.create(BuildConfig.API_BASE_URL, agentToken).updateFcmToken(token)
+                AgentRepository.create(baseUrl, agentToken).updateFcmToken(token)
             }.onFailure { Log.e("RemoteAgent", "Could not refresh push token", it) }
         }
     }

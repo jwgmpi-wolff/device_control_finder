@@ -41,39 +41,58 @@ activation or continuous location tracking in this starter.
 The GitHub Actions workflow in `.github/workflows/build-downloads.yml` builds both
 APKs and the Windows requestor installer. Push a `v*` tag to create a GitHub Release
 with direct download links shown above. Running the workflow manually uploads builds
-as workflow artifacts instead.
+as workflow artifacts instead. The apps ask for your deployed RemoteHub HTTPS URL at
+first use; builds are not tied to a sample server.
 
 To enable FCM in the target APK, add the base64-encoded Firebase
 `google-services.json` as the repository Actions secret
 `REMOTEAGENT_GOOGLE_SERVICES_JSON_BASE64` before running the workflow. Without this
 secret, the target APK still builds but FCM registration will not work.
 
-## Backend setup
+## Deploy RemoteHub (required for login)
 
-Requires Node.js 20+, Redis, and a Firebase Admin service account for push delivery.
+Authentication is against the **RemoteHub backend you deploy**. The downloadable
+apps no longer point at a placeholder, but login cannot work until this service is
+running at a publicly reachable HTTPS address. The included Docker Compose setup
+runs RemoteHub, private Redis, and Caddy for automatic TLS.
 
-1. Copy `RemoteHub/.env.example` to `.env` and set secrets and service URLs.
-2. From `RemoteHub`, run `npm install`, then `npm run dev`.
-3. Use HTTPS/WSS behind a TLS-terminating reverse proxy in deployment. Never expose
-   Redis or the service-account key publicly.
-4. Create a controller account with `POST /auth/register`, then register an agent
-   with `POST /devices`. The returned device token belongs on the agent only.
-5. The agent receives a push request and presents it for explicit owner approval.
-   Signaling becomes available only after acceptance.
+1. Provision a Linux host with Docker Compose, a public DNS name (for example
+   `remotehub.your-domain.com`), and inbound TCP ports 80 and 443 available.
+2. Point the hostname's DNS A/AAAA record at the host. From the repository root,
+   copy `.env.production.example` to `.env`.
+3. Set `PUBLIC_HOSTNAME`, `ACME_EMAIL`, and a newly generated `JWT_SECRET` of at
+   least 32 characters in `.env`. Keep `.env` private; it is git-ignored.
+4. From the repository root, run `docker compose up -d --build`. Check
+   `docker compose ps` and `https://<your-hostname>/ready`. Caddy obtains and
+   renews the HTTPS certificate automatically.
+5. Enter `https://<your-hostname>` in RemoteController, create an account, and
+   sign in. Use **Register and pair a target** to create a device. Copy the
+   returned pairing token through a trusted channel into RemoteAgent, enter the
+   same server URL, complete first-run consent, and connect.
+6. Enable **Accepting requests** on the target. This only permits requests to be
+   shown; the device owner must still approve each individual request.
 
-The controller account must register its agent using its bearer token. The response
-contains a one-time `agentToken`; transfer it to the target device through a trusted
-pairing channel, enter it in RemoteAgent, and do not retain it in controller logs.
-The target then uploads its FCM token using its agent token. In the agent app, the
-owner must complete first-run consent and switch on "Accepting requests"; this still
-does not pre-approve any session.
+For FCM push delivery, create a Firebase project and Android app for package
+`com.example.remoteagent`. Store its `google-services.json` as the repository
+Actions secret `REMOTEAGENT_GOOGLE_SERVICES_JSON_BASE64` (base64-encoded). Put the
+Firebase Admin service-account JSON in the server's `.env` as a single-line
+`FIREBASE_SERVICE_ACCOUNT_JSON` value, then restart RemoteHub. Without those
+Firebase credentials, FCM delivery is unavailable; configure them before relying
+on remote request notifications.
 
-The current Android and Windows clients implement login, device listing, request
-creation, and basic signaling transport. The backend and agent implement request
-approval/revocation. This starter intentionally does not capture camera/microphone,
-collect location, or implement a WebRTC media renderer; those resource-specific
-features require separate OS permission prompts, foreground indicators, and explicit
-per-session owner approval before any capture begins.
+The Android and Windows clients implement real backend account creation/sign-in,
+device registration, request creation, and device listing. The agent can submit
+owner decisions and revoke sessions. Signaling transport is provided, but this
+version does not capture camera/microphone, collect location, or render WebRTC media.
+Those capabilities must not be enabled by a remote request alone; they require
+per-session owner approval, OS permissions, foreground indicators, and an explicit
+active share experience on the device.
+
+**This repository does not contain a hosted backend URL or Firebase credentials.**
+You must deploy RemoteHub and configure Firebase to activate online login and push
+delivery. Do not enter a sample/example URL; use the HTTPS hostname from your
+deployment. Camera/audio/location sharing and a WebRTC media viewer are not active
+features in this version.
 
 `npm test` runs backend authorization and consent-gate tests. These scaffolds are
 not a substitute for a production security review, platform permission handling,
@@ -81,17 +100,13 @@ pairing UX, key rotation, or deployment hardening.
 
 ## Android projects
 
-Open each project directory in Android Studio. Set `BuildConfig.API_BASE_URL` and
-`BuildConfig.WS_BASE_URL` to your TLS endpoints. Add Firebase's local
-`google-services.json` to RemoteAgent. Android apps deliberately do not
-start camera, microphone, or location collection from a push callback; they only
-surface a request for foreground user approval. Media capture and location sharing
-should be added behind the same explicit, visible, revocable approval flow.
-For Firebase push, add the app's `google-services.json` locally. Do not commit the
-service-account key or local project credentials.
+Open each project directory in Android Studio. Enter the deployed HTTPS server URL
+in the app's server field. Add Firebase's local `google-services.json` to
+RemoteAgent only when configuring FCM. Do not commit service-account keys or local
+Firebase credentials.
 
 ## Windows project
 
 Open `RemoteControllerDesktop/RemoteControllerDesktop.csproj` in Visual Studio.
-Set the API URL in app settings or inject it at startup. The sample uses HTTPS and
-provides request actions only; sensor access remains the agent owner's decision.
+Enter the deployed RemoteHub HTTPS URL to create an account or sign in. The Windows
+app provides request actions only; sensor access remains the agent owner's decision.

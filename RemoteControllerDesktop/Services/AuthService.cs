@@ -8,6 +8,16 @@ public sealed record LoginResponse(string Token, string UserId);
 
 public sealed class AuthService(HttpClient client)
 {
+    public async Task<LoginResponse> RegisterAsync(
+        string email, string password, CancellationToken cancellationToken = default)
+    {
+        using var response = await client.PostAsJsonAsync(
+            "auth/register", new LoginRequest(email, password), cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<LoginResponse>(cancellationToken)
+            ?? throw new InvalidOperationException("Server returned an empty registration response.");
+    }
+
     public async Task<LoginResponse> LoginAsync(string email, string password, CancellationToken cancellationToken = default)
     {
         using var response = await client.PostAsJsonAsync(

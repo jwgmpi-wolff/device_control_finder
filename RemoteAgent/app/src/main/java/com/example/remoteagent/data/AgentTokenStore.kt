@@ -17,6 +17,10 @@ object AgentTokenStore {
     fun set(context: Context, token: String) {
         preferences(context).edit().putString("agent_token", token.trim()).apply()
     }
+    fun getBaseUrl(context: Context): String = preferences(context).getString("base_url", "").orEmpty()
+    fun setBaseUrl(context: Context, baseUrl: String) {
+        preferences(context).edit().putString("base_url", baseUrl.trim().trimEnd('/')).apply()
+    }
 
     fun getFcmToken(context: Context): String? = preferences(context).getString("fcm_token", null)
     fun setFcmToken(context: Context, token: String) {

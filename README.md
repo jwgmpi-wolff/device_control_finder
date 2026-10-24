@@ -2,21 +2,17 @@
 
 ## Downloads
 
-**Android target app:** [Download RemoteAgent-target-debug.apk](https://github.com/jwgmpi-wolff/device_control_finder/actions/workflows/build-downloads.yml)
-from the latest successful **Build device downloads** run's artifacts.
+**Windows requestor installer:** [Download RemoteControllerDesktop-Setup.exe](https://github.com/jwgmpi-wolff/device_control_finder/releases/latest/download/RemoteControllerDesktop-Setup.exe)
 
-**Android requestor app:** [Download RemoteController-requestor-debug.apk](https://github.com/jwgmpi-wolff/device_control_finder/actions/workflows/build-downloads.yml)
-from the same workflow run.
+**Android target app:** [Download RemoteAgent-target-debug.apk](https://github.com/jwgmpi-wolff/device_control_finder/releases/latest/download/RemoteAgent-target-debug.apk)
 
-**Windows requestor:** [Download RemoteControllerDesktop-Setup.exe](https://github.com/jwgmpi-wolff/device_control_finder/actions/workflows/build-downloads.yml)
-from the same workflow run.
+**Android requestor app:** [Download RemoteController-requestor-debug.apk](https://github.com/jwgmpi-wolff/device_control_finder/releases/latest/download/RemoteController-requestor-debug.apk)
 
-Open the workflow link, choose the latest **successful** run, and download the
-named file under **Artifacts**. The builds are separate: install RemoteAgent on the
-target Android device and RemoteController on the requesting Android device. The
-Windows installer is for the requesting PC. If no successful run or artifact is
-available yet, use **Run workflow** on that page and wait for both build jobs to
-finish. For versioned, direct release downloads, see [GitHub Releases](https://github.com/jwgmpi-wolff/device_control_finder/releases).
+The APKs are separate: install RemoteAgent on the target Android device and
+RemoteController on the requesting Android device. The Windows setup installer is
+for the requesting PC. See [all releases](https://github.com/jwgmpi-wolff/device_control_finder/releases)
+for version history. Builds are development/debug builds and are not Play Store
+signed.
 
 This workspace contains starter projects for an Android agent, Android controller,
 Windows WPF controller, and the RemoteHub backend.
@@ -42,11 +38,10 @@ activation or continuous location tracking in this starter.
 
 ## Build downloads
 
-The GitHub Actions workflow in `.github/workflows/build-downloads.yml` builds the
-target and requestor APKs as separate files and creates a self-contained Windows
-requestor installer. Run it from the Actions tab (`workflow_dispatch`) to download
-the artifacts, or push a `v*` tag to attach all three files to a GitHub Release.
-Debug APKs are development builds and are not signed for Play Store distribution.
+The GitHub Actions workflow in `.github/workflows/build-downloads.yml` builds both
+APKs and the Windows requestor installer. Push a `v*` tag to create a GitHub Release
+with direct download links shown above. Running the workflow manually uploads builds
+as workflow artifacts instead.
 
 To enable FCM in the target APK, add the base64-encoded Firebase
 `google-services.json` as the repository Actions secret

@@ -1,5 +1,23 @@
 # Consent-based Remote Support
 
+## Downloads
+
+**Android target app:** [Download RemoteAgent-target-debug.apk](https://github.com/jwgmpi-wolff/device_control_finder/actions/workflows/build-downloads.yml)
+from the latest successful **Build device downloads** run's artifacts.
+
+**Android requestor app:** [Download RemoteController-requestor-debug.apk](https://github.com/jwgmpi-wolff/device_control_finder/actions/workflows/build-downloads.yml)
+from the same workflow run.
+
+**Windows requestor:** [Download RemoteControllerDesktop-Setup.exe](https://github.com/jwgmpi-wolff/device_control_finder/actions/workflows/build-downloads.yml)
+from the same workflow run.
+
+Open the workflow link, choose the latest **successful** run, and download the
+named file under **Artifacts**. The builds are separate: install RemoteAgent on the
+target Android device and RemoteController on the requesting Android device. The
+Windows installer is for the requesting PC. If no successful run or artifact is
+available yet, use **Run workflow** on that page and wait for both build jobs to
+finish. For versioned, direct release downloads, see [GitHub Releases](https://github.com/jwgmpi-wolff/device_control_finder/releases).
+
 This workspace contains starter projects for an Android agent, Android controller,
 Windows WPF controller, and the RemoteHub backend.
 
@@ -22,7 +40,7 @@ activation or continuous location tracking in this starter.
 - `RemoteControllerDesktop/` - WPF controller sample with device list and request
   actions.
 
-## Download builds
+## Build downloads
 
 The GitHub Actions workflow in `.github/workflows/build-downloads.yml` builds the
 target and requestor APKs as separate files and creates a self-contained Windows

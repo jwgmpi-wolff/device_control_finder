@@ -71,8 +71,11 @@ runs RemoteHub, private Redis, and Caddy for automatic TLS.
    Google account. The target will appear in that account's controller device
    list with a unique Device ID. Existing pairing-token setup remains available
    as a manual alternative.
-6. Enable **Accepting requests** on the target. This only permits requests to be
-   shown; the device owner must still approve each individual request.
+6. Enable **Persistent remote authorization** on the target. This permits requests to be
+   sent to the target account. The choice persists across app restarts until the
+   target explicitly turns it off or taps **Revoke remote authorization**. Revoking
+   ends pending and active sessions. The device owner must still approve each
+   camera, microphone, or location request individually.
 
 For FCM push delivery, create a Firebase project and Android app for package
 `com.example.remoteagent`. Store its `google-services.json` as the repository
@@ -118,6 +121,11 @@ version does not capture camera/microphone, collect location, or render WebRTC m
 Those capabilities must not be enabled by a remote request alone; they require
 per-session owner approval, OS permissions, foreground indicators, and an explicit
 active share experience on the device.
+
+The target's remote-authorization switch is stored without an expiry in Redis.
+The included deployment enables Redis AOF persistence and a data volume, so the
+setting survives app and backend restarts. Turning access off explicitly revokes
+authorization and closes outstanding sessions.
 
 **This repository does not contain a hosted backend URL or Firebase credentials.**
 You must deploy RemoteHub and configure Firebase to activate online login and push

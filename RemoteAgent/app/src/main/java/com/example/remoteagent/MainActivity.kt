@@ -215,7 +215,32 @@ class MainActivity : ComponentActivity() {
                                     status = "Connected. FCM is unavailable until Firebase is configured for this build."
                                 }
                         }) { Text("Connect and save pairing") }
-                        Text("Accepting requests")
+                        Text("Persistent remote authorization")
+                        Text(
+                            if (enabled) {
+                                "ON: the linked account can send session requests until you explicitly revoke access here. This stays enabled across app restarts."
+                            } else {
+                                "OFF: no remote session requests are accepted."
+                            }
+                        )
+                        if (enabled) {
+                            Button(
+                                enabled = repository != null,
+                                onClick = {
+                                    lifecycleScope.launch {
+                                        runCatching { repository?.setAccess(false) }
+                                            .onSuccess {
+                                                enabled = it?.enabled ?: false
+                                                status = "Remote authorization revoked. Pending and active sessions were ended."
+                                            }
+                                            .onFailure {
+                                                status = "Could not revoke remote authorization: ${it.message}"
+                                            }
+                                    }
+                                }
+                            ) { Text("Revoke remote authorization") }
+                        }
+                        Text("Turning this on does not approve camera, microphone, or location access. You must still approve each request.")
                         Switch(checked = enabled, enabled = repository != null, onCheckedChange = { checked ->
                             lifecycleScope.launch {
                                 runCatching { repository?.setAccess(checked) }

@@ -130,6 +130,7 @@ class MainActivity : ComponentActivity() {
                                 items(state.devices) { device ->
                                     Column {
                                         Text(device.name, style = MaterialTheme.typography.titleMedium)
+                                        Text("Device ID: ${device.id}", style = MaterialTheme.typography.bodySmall)
                                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                             Button(enabled = !state.busy, onClick = { model.request(device.id, "CAMERA") }) { Text("Request camera") }
                                             Button(enabled = !state.busy, onClick = { model.request(device.id, "MICROPHONE") }) { Text("Request audio") }

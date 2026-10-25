@@ -105,6 +105,11 @@ public partial class MainWindow : Window
                 FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(0, 0, 0, 8)
             });
+            card.Children.Add(new TextBlock
+            {
+                Text = $"Device ID: {device.Id}",
+                Margin = new Thickness(0, 0, 0, 8)
+            });
             var actions = new WrapPanel();
             AddRequestButton(actions, device, "CAMERA", "Request camera");
             AddRequestButton(actions, device, "MICROPHONE", "Request audio");

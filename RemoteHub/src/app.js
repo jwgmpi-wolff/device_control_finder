@@ -26,6 +26,18 @@ app.use((req, res, next) => {
 const allowedCapabilities = new Set(["CAMERA", "MICROPHONE", "LOCATION_ONCE"]);
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 
+async function registerDevice(ownerId, name, fcmToken = "") {
+  const id = randomUUID();
+  const device = { id, ownerId, name, fcmToken, createdAt: new Date().toISOString() };
+  await redis.set(keys.device(id), JSON.stringify(device));
+  await redis.sAdd(keys.ownerDevices(ownerId), id);
+  await writeAudit({ actorId: ownerId, deviceId: id, action: "device.register" });
+  return {
+    device: { id, name, createdAt: device.createdAt },
+    agentToken: issueToken({ sub: id, ownerId, role: "agent" }, "30d")
+  };
+}
+
 app.get("/health", (_req, res) => res.json({ ok: true }));
 app.get("/ready", asyncRoute(async (_req, res) => {
   await redis.ping();
@@ -102,7 +114,7 @@ app.post("/auth/google", asyncRoute(async (req, res) => {
   await redis.set(keys.user(userId), JSON.stringify(user));
   await redis.set(keys.email(email), userId);
   await writeAudit({ actorId: userId, action: "auth.google_login" });
-  return res.json({ token: issueToken({ sub: userId, role: "controller" }), userId });
+  return res.json({ token: issueToken({ sub: userId, role: "controller" }), userId, email });
 }));
 
 app.post("/devices", authenticate, requireRole("controller"), asyncRoute(async (req, res) => {
@@ -111,15 +123,39 @@ app.post("/devices", authenticate, requireRole("controller"), asyncRoute(async (
   if (!name || name.length > 80) {
     return res.status(400).json({ error: "Device name required (maximum 80 characters)" });
   }
-  const id = randomUUID();
-  const device = { id, ownerId: req.principal.sub, name, fcmToken, createdAt: new Date().toISOString() };
-  await redis.set(keys.device(id), JSON.stringify(device));
-  await redis.sAdd(keys.ownerDevices(req.principal.sub), id);
-  await writeAudit({ actorId: req.principal.sub, deviceId: id, action: "device.register" });
-  return res.status(201).json({
-    device: { id, name, createdAt: device.createdAt },
-    agentToken: issueToken({ sub: id, ownerId: req.principal.sub, role: "agent" }, "30d")
-  });
+  return res.status(201).json(await registerDevice(req.principal.sub, name, fcmToken));
+}));
+
+app.post("/agent/register", authenticate, requireRole("controller"), asyncRoute(async (req, res) => {
+  const name = String(req.body.name ?? "").trim();
+  const installId = String(req.body.installId ?? "").trim();
+  if (!name || name.length > 80) {
+    return res.status(400).json({ error: "Device name required (maximum 80 characters)" });
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(installId)) {
+    return res.status(400).json({ error: "Valid target installation ID required" });
+  }
+
+  const ownerId = req.principal.sub;
+  const installKey = keys.agentInstall(ownerId, installId);
+  const existingId = await redis.get(installKey);
+  if (existingId) {
+    const existingDevice = await getDevice(existingId);
+    if (existingDevice?.ownerId === ownerId) {
+      existingDevice.name = name;
+      await redis.set(keys.device(existingId), JSON.stringify(existingDevice));
+      await writeAudit({ actorId: ownerId, deviceId: existingId, action: "device.agent_reauthenticated" });
+      return res.status(200).json({
+        device: { id: existingId, name, createdAt: existingDevice.createdAt },
+        agentToken: issueToken({ sub: existingId, ownerId, role: "agent" }, "30d")
+      });
+    }
+    await redis.del(installKey);
+  }
+
+  const registration = await registerDevice(ownerId, name);
+  await redis.set(installKey, registration.device.id);
+  return res.status(201).json(registration);
 }));
 
 app.get("/devices", authenticate, requireRole("controller"), asyncRoute(async (req, res) => {

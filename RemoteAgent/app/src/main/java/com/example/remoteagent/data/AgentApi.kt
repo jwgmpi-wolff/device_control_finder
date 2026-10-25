@@ -16,8 +16,19 @@ data class DecisionResponse(val sessionId: String, val status: String)
 data class EndResponse(val sessionId: String, val status: String)
 data class AccessState(val enabled: Boolean)
 data class FcmTokenRequest(val fcmToken: String)
+data class GoogleLoginRequest(val idToken: String)
+data class LoginResponse(val token: String, val userId: String, val email: String = "")
+data class RegisterAgentRequest(val name: String, val installId: String)
+data class RegisterAgentResponse(val device: RegisteredDevice, val agentToken: String)
+data class RegisteredDevice(val id: String, val name: String, val createdAt: String)
 
 interface AgentApi {
+    @POST("auth/google")
+    suspend fun googleLogin(@Body body: GoogleLoginRequest): LoginResponse
+
+    @POST("agent/register")
+    suspend fun registerAgent(@Body body: RegisterAgentRequest): RegisterAgentResponse
+
     @POST("agent/sessions/{sessionId}/decision")
     suspend fun decide(@Path("sessionId") id: String, @Body body: DecisionRequest): DecisionResponse
 
@@ -35,6 +46,9 @@ interface AgentApi {
 }
 
 class AgentRepository(private val api: AgentApi) {
+    suspend fun googleLogin(idToken: String) = api.googleLogin(GoogleLoginRequest(idToken))
+    suspend fun registerAgent(name: String, installId: String): RegisterAgentResponse =
+        api.registerAgent(RegisterAgentRequest(name, installId))
     suspend fun decide(sessionId: String, accept: Boolean) =
         api.decide(sessionId, DecisionRequest(if (accept) "accept" else "decline"))
 
@@ -44,15 +58,16 @@ class AgentRepository(private val api: AgentApi) {
     suspend fun updateFcmToken(token: String) = api.updateFcmToken(FcmTokenRequest(token))
 
     companion object {
-        fun create(baseUrl: String, token: String): AgentRepository {
+        fun create(baseUrl: String, token: String = ""): AgentRepository {
             val parsed = URI(baseUrl.trim())
             require(parsed.scheme == "https" && parsed.host != null) {
                 "RemoteHub URL must be a valid HTTPS URL."
             }
             val normalizedBaseUrl = baseUrl.trim().trimEnd('/') + "/"
             val auth = Interceptor { chain ->
-                chain.proceed(chain.request().newBuilder()
-                    .header("Authorization", "Bearer $token").build())
+                val request = chain.request().newBuilder()
+                if (token.isNotBlank()) request.header("Authorization", "Bearer $token")
+                chain.proceed(request.build())
             }
             val client = OkHttpClient.Builder().addInterceptor(auth).build()
             val api = Retrofit.Builder().baseUrl(normalizedBaseUrl).client(client)

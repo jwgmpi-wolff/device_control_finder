@@ -65,10 +65,12 @@ runs RemoteHub, private Redis, and Caddy for automatic TLS.
 4. From the repository root, run `docker compose up -d --build`. Check
    `docker compose ps` and `https://<your-hostname>/ready`. Caddy obtains and
    renews the HTTPS certificate automatically.
-5. Enter `https://<your-hostname>` in RemoteController, create an account, and
-   sign in. Use **Register and pair a target** to create a device. Copy the
-   returned pairing token through a trusted channel into RemoteAgent, enter the
-   same server URL, complete first-run consent, and connect.
+5. Enter `https://<your-hostname>` in RemoteController and sign in with Google.
+   On the target, enter the same server URL, complete first-run consent, then
+   choose **Continue with Google to register this target** and use the same
+   Google account. The target will appear in that account's controller device
+   list with a unique Device ID. Existing pairing-token setup remains available
+   as a manual alternative.
 6. Enable **Accepting requests** on the target. This only permits requests to be
    shown; the device owner must still approve each individual request.
 
@@ -85,10 +87,13 @@ on remote request notifications.
 1. In Google Cloud Console, configure the OAuth consent screen and create a **Web
    application** OAuth client. Add its client ID as the repository Actions
    variable `GOOGLE_WEB_CLIENT_ID`.
-2. Create an **Android** OAuth client for package
-   `com.example.remotecontroller` and its signing certificate SHA-1. Get the local
-   debug SHA-1 with `gradle -p RemoteController :app:signingReport`. Rebuild the
-   APK after setting the Web client variable.
+2. Create **Android** OAuth clients for packages `com.example.remotecontroller`
+   and `com.example.remoteagent`, using each app's signing certificate SHA-1.
+   Get the local debug SHA-1 values with
+   `gradle -p RemoteController :app:signingReport` and
+   `gradle -p RemoteAgent :app:signingReport` for locally built APKs. The
+   certificate configured in Google Cloud must match the APK you install.
+   Rebuild the APKs after setting the Web client variable.
 3. Add the Web client ID to the comma-separated `GOOGLE_CLIENT_IDS` value in the
    deployed `.env`, then rebuild/restart RemoteHub.
 4. For the Windows requestor, create a separate **Desktop app** OAuth client.
@@ -101,8 +106,13 @@ before issuing its own RemoteHub JWT. Account password login remains available a
 an alternative. Do not add OAuth client-secret JSON files or Firebase credentials
 to Git.
 
-The Android and Windows clients implement real backend account creation/sign-in,
-device registration, request creation, and device listing. The agent can submit
+The Android target and Android/Windows requestors can identify a target through
+the same verified Google account; the target registers itself to that account and
+then appears in its device list. This avoids treating an unverified phone number
+as proof of device ownership. Phone-number discovery is not implemented; it
+requires an SMS verification provider. The Android and Windows clients implement
+real backend account creation/sign-in, device registration, request creation, and
+device listing. The agent can submit
 owner decisions and revoke sessions. Signaling transport is provided, but this
 version does not capture camera/microphone, collect location, or render WebRTC media.
 Those capabilities must not be enabled by a remote request alone; they require

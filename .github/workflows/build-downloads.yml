@@ -34,7 +34,7 @@ jobs:
         env:
           GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
         run: |
-          gradle --no-daemon -p RemoteAgent :app:assembleDebug
+          gradle --no-daemon -p RemoteAgent -PGOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID" :app:assembleDebug
           gradle --no-daemon -p RemoteController -PGOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID" :app:assembleDebug
       - name: Stage separately named APKs
         shell: bash

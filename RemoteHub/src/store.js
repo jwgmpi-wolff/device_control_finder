@@ -8,6 +8,7 @@ export const keys = {
   user: (id) => `user:${id}`,
   email: (email) => `email:${email.toLowerCase()}`,
   device: (id) => `device:${id}`,
+  agentInstall: (ownerId, installId) => `owner:${ownerId}:agent-install:${installId}`,
   agentEnabled: (id) => `agent:${id}:enabled`,
   deviceSessions: (id) => `device:${id}:sessions`,
   ownerDevices: (ownerId) => `owner:${ownerId}:devices`,

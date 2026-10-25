@@ -9,6 +9,7 @@ process.env.JWT_ISSUER ??= "remotehub-test";
 process.env.JWT_AUDIENCE ??= "remote-support-test";
 
 const { app } = await import("../src/app.js");
+const { issueToken } = await import("../src/auth.js");
 const { attachSignaling, authorizeSignal } = await import("../src/signaling.js");
 
 test("signaling requires owner acceptance and enforces offer/answer direction", () => {
@@ -50,5 +51,36 @@ test("WebSocket signaling rejects connections without a bearer token", async () 
     ws.once("error", reject);
   });
   assert.equal(status, 401);
+  await new Promise((resolve) => server.close(resolve));
+});
+
+test("target registration only accepts controller accounts and validates installation identity", async () => {
+  const server = createServer(app);
+  await new Promise((resolve) => server.listen(0, resolve));
+  const { port } = server.address();
+  const url = `http://127.0.0.1:${port}/agent/register`;
+
+  const agentResponse = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${issueToken({ sub: "target-1", role: "agent" })}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ name: "Target", installId: "invalid" })
+  });
+  assert.equal(agentResponse.status, 403);
+
+  const controllerResponse = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${issueToken({ sub: "owner-1", role: "controller" })}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ name: "Target", installId: "invalid" })
+  });
+  assert.equal(controllerResponse.status, 400);
+  assert.deepEqual(await controllerResponse.json(), {
+    error: "Valid target installation ID required"
+  });
   await new Promise((resolve) => server.close(resolve));
 });
